@@ -20,34 +20,31 @@ function getCompanyPositionText(userInfo) {
   return `${userInfo.company || ''} ${userInfo.position || ''}`.trim();
 }
 
-// 辅助函数：检查是否在签到时间段内
+// 辅助函数：检查是否在签到时间段内 (修改后)
 function isWithinCheckinTime(event, checkinConfig, currentTime) {
-  if (!event || !event.date || !event.startTime || !checkinConfig || !checkinConfig.enabled) {
+  // 首先，确保签到功能已为该活动启用
+  if (!checkinConfig || !checkinConfig.enabled || !event || !event.date) {
     return false;
   }
 
   try {
-    const eventDateStr = event.date; // "YYYY-MM-DD"
-    const eventStartTimeStr = event.startTime; // "HH:mm"
-    
-    const [year, month, day] = eventDateStr.split('-').map(num => parseInt(num, 10));
-    const [hour, minute] = eventStartTimeStr.split(':').map(num => parseInt(num, 10));
-    
-    const eventStartDateTime = new Date(year, month - 1, day, hour, minute);
-    
-    if (isNaN(eventStartDateTime.getTime())) {
-        console.error('无效的活动开始日期或时间:', eventDateStr, eventStartTimeStr);
-        return false;
-    }
+    // 1. 获取活动的日期字符串 (格式: "YYYY-MM-DD")
+    const eventDateStr = event.date;
 
-    const openTimeOffsetMs = (typeof checkinConfig.openTimeOffset === 'number' ? checkinConfig.openTimeOffset : 0) * 60 * 1000;
-    console.log(`签到时间计算：使用的openTimeOffset值(分钟): ${openTimeOffsetMs/60/1000}, 原始值: ${checkinConfig.openTimeOffset}`);
-    
-    let checkinOpenDateTime = new Date(eventStartDateTime.getTime() - openTimeOffsetMs); // MODIFIED: Changed + to -
-    let checkinCloseDateTime = new Date(eventStartDateTime.getTime() + 60 * 60 * 1000); 
+    // 2. 获取当前的日期字符串 (格式: "YYYY-MM-DD")
+    const now = currentTime || new Date(); // 使用传入的当前时间或新建一个
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // 月份是从0开始的，所以+1
+    const day = now.getDate().toString().padStart(2, '0');
+    const currentDateStr = `${year}-${month}-${day}`;
 
-    console.log(`签到判断：当前时间: ${currentTime}, 签到开放: ${checkinOpenDateTime}, 签到截止: ${checkinCloseDateTime}`);
-    return currentTime >= checkinOpenDateTime && currentTime <= checkinCloseDateTime;
+    // 3. 比较两个日期字符串是否完全相同
+    const canCheckin = (eventDateStr === currentDateStr);
+
+    console.log(`签到判断：活动日期: ${eventDateStr}, 当前日期: ${currentDateStr}, 是否可以签到: ${canCheckin}`);
+
+    return canCheckin;
+
   } catch (e) {
     console.error("检查签到时间出错:", e);
     return false;
